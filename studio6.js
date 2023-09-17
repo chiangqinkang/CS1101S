@@ -1,26 +1,29 @@
-// // import { accumulate, map } from "lists";
-// function my_map(f, xs) {
-//     return accumulate(f, null, xs);
-// }
+function my_map(f, xs) {
+    return accumulate((x,y) => append(f(x), list(y)), null, xs);
+}
+function add(t){
+    return is_null ? 
 
-// my_map(x => x+5, list(1,2,3));
+}
 
-// function remove_duplicates(lst) {
-//     function checkDuplicate(item, dupelist){
-//         if (dupelist === is_null){
-//             const dupe_list = append(list(item), dupelist);
-//             return true;
-//         }
-//         else if (item === head(dupelist)){
-//             return false;
+my_map(add, list(1,2,3));
+
+function remove_duplicates(lst) {
+    function checkDuplicate(item, dupelist){
+        if (dupelist === is_null){
+            const dupe_list = append(list(item), dupelist);
+            return true;
+        }
+        else if (item === head(dupelist)){
+            return false;
             
-//         }
-//         else {
-//             checkDuplicate(item, tail(dupelist));
-//         }
-//     }
-//     return filter(checkDuplicate);
-// }
+        }
+        else {
+            checkDuplicate(item, tail(dupelist));
+        }
+    }
+    return filter(checkDuplicate);
+}
 
 function makeup_amount(x, coins) {
     if (x === 0) {
