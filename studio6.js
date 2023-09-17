@@ -2,8 +2,9 @@ function my_map(f, xs) {
     return accumulate((x,y) => append(f(x), list(y)), null, xs);
 }
 function add(t){
-    return is_null ? 
-
+    return is_null
+        ? null
+        : t + 1;
 }
 
 my_map(add, list(1,2,3));
@@ -12,17 +13,20 @@ function remove_duplicates(lst) {
     function checkDuplicate(item, dupelist){
         if (dupelist === is_null){
             const dupe_list = append(list(item), dupelist);
-            return true;
+            return checkDuplicate(head(tail(lst)), dupe_list);
         }
         else if (item === head(dupelist)){
             return false;
             
         }
+        else if (item === null){
+            return true;
+        }
         else {
-            checkDuplicate(item, tail(dupelist));
+            return checkDuplicate(item, tail(dupelist));
         }
     }
-    return filter(checkDuplicate);
+    return filter(checkDuplicate(item, null), lst);
 }
 
 function makeup_amount(x, coins) {
