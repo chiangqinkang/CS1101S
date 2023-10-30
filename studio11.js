@@ -13,12 +13,24 @@ function mul_streams(a,b) {
 
 // alt_ones
 const ones = pair(1, () => ones);
+
+// when calling as a function, remember to call alt_onesfunc()
+// and not just pass alt_ones as a function object
+function alt_onesfunc(){
+    return pair(1,
+                () => pair(-1,
+                            () => alt_onesfunc()));
+}
+
+
+
 const alternating_ones = pair(1, () => pair(-1, () => alternating_ones));
-// const alt_ones = scale_stream(-1, () => alt_ones);
+const alt_ones = pair(1, () => scale_stream(-1, alt_ones));
 
 function addStreams(s1, s2){
     return pair(head(s1) + head(s2),
         addStreams(stream_tail(s1), stream_tail(s2)));
 }
 
-addStreams(scale_stream(-1, alternating_ones), alternating_ones);
+
+// addStreams(scale_stream(-1, alternating_ones), alternating_ones);
