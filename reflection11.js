@@ -753,18 +753,17 @@ function logical_composition_second_component(comp) {
 function make_conditional_expression(pred, cons, alt) {
     return list("conditional_expression", pred, cons, alt);
 }
-// helper to make a literal value
-function make_literal(value) {
-    return list("literal", value);
-}
 
 // helper to convert logical_composition to conditional expression
-function logical_composition_to_conditional_expression(component){
-    return logical_symbol(component) === "&&"
-            ? make_conditional_expression(logical_composition_first_component(component),
-                logical_composition_second_component(component),
+function logical_composition_to_conditional_expression(command){
+    return logical_symbol(command) === "&&"
+            ? make_conditional_expression(logical_composition_first_command(command),
+                logical_composition_second_command(command),
                     make_literal(false))
-            : make_conditional_expression(logical_composition_first_component(component),
+            : make_conditional_expression(logical_composition_first_command(command),
                 make_literal(true),
-                    logical_composition_second_component(component));
+                    logical_composition_second_command(command));
 }
+
+// Question 3
+// just use the inbuilt parse function in source
