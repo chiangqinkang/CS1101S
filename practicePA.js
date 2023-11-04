@@ -20,11 +20,9 @@ function is_palindrome(s) {
      const mid_pt = math_floor(str_len/2);
      const s_list = string_to_list(s);
      let boolhelper = true;
-     for (let i = 0; i < str_len; i = i + 1){
-         if (list(s_list, i) === list_ref(s_list, str_len-1-i)){
-             continue;
-         } else {
-            boolhelper = false;
+     for (let i = 0; i < mid_pt; i = i + 1){
+         if (char_at(s, i) !== char_at(s, str_len - i - 1)){
+             return false;
          }
      }
      return true;
@@ -33,31 +31,29 @@ function is_palindrome(s) {
 // TASK 1C: GENERATE PALINDROMES
 
 function generate_palindrome(x) {
-    // counts number of times char appears
-    const str_xs = string_to_list(x);
-    function palindromeHelper(char, str_list, count){
-        if (is_null(str_list)){
-            return count;
-        } else if (char === head(str_list)){
-            return palindromeHelper(char, tail(str_list), count + 1);
-        } else {
-            return palindromeHelper(char, tail(str_list), count);
+    function permutations(ys) {
+            return is_null(ys)
+                ? list(null)
+                : accumulate(append, null,
+                    map(x => map(p => pair(x, p),
+                                 permutations(remove(x, ys))),
+                        ys));
         }
+    function remove_duplicates(xs) {
+        return is_null(xs) 
+              ? null
+              : pair(head(xs), 
+                      remove_duplicates(filter(p => !equal(p, head(xs)), 
+                                        tail(xs))));
     }
-    let mid = undefined;
-    for (let p = str_xs; !is_null(p); p = tail(p)){
-        if (palindromeHelper(head(p), p, 0) % 2 !== 0){
-            mid = head(p);
-        } 
+	
+    function is_palindrome_list(xs) {
+        return equal(xs, reverse(xs));
     }
-    let palindromes = undefined;
-    for (let i = 0; i < length(str_xs); i = i + 1){
-        if (i === math_floor(string_length(x))){
-            palindromes = pair(palindromes, mid);
-        } else {
-            palindromes = pair(palindromes, x);
-        }
-    }
+    
+    const xs = string_to_list(x);
+    const words = permutations(xs);
+    return map(list_to_string, remove_duplicates(filter(is_palindrome_list, words)));    
 }
 
 
@@ -77,106 +73,142 @@ function geometric_sequence(a, r) {
 // TASK 2C: RECURRENCE RELATION
 
 function recurrence(t1, t2, f) {
-    return recurrence(t2, recurrence(t1,t2), f);
+    return pair(t1, () => recurrence(t2, f(t1,t2), f));
 }
 
 
 // TASK 2D: ZIP SEQUENCES
 
 function zip_sequences(xs) {
-    let seq = undefined;
-    let new_tail = xs;
-    for (let i = 0; i < length(xs) - 1; i = i + 1){
-        seq = pair(list_ref(xs, i), () => list_ref(xs, i+1));
+    if (is_null(xs)) {
+	return null;
+    } else {
+        const seq = head(xs);
+        return pair(head(seq), () => zip_sequences(append(tail(xs), list(stream_tail(seq)))));
     }
-    for (let i = 0; i < length(xs); i = i + 1){
-     new_tail = tail(new_tail);
-    }
-    return pair(seq, () => zip_sequences(new_tail));
 }
 
 
 // TASK 2E: SUM OF SEQUENCES
 
 function sum_sequences(xs) {
-    let seq = undefined;
-    let accum = 0;
-    let new_tail = xs;
-    for (let i = 0; i < length(xs); i = i + 1){
-        accum = accum + nth_term(list_ref(xs,i), 1);
-        new_tail = tail(new_tail);
+    function add_stream(s1, s2) {
+        return is_null(s1)
+               ? s2
+               : is_null(s2)
+               ? s1
+               : pair(head(s1) + head(s2), () => add_stream(stream_tail(s1), stream_tail(s2)));
     }
-    return pair(accum, () => pair(sum_sequences()));
+    return accumulate(add_stream, null, xs);
 }
 
 
 // TASK 3: TRAVERSE MATRIX DIAGONALLY
 
 function traverse_diagonally(M) {
-    const mat_rows = array_length(M);
-    const mat_cols = array_length(M[0]);
-    function checkPos(row,col){
-        if (row < 0 || col < 0 || row > mat_rows || col > mat_cols){
-            return false;
-        } else {
-            return true;
+//     const mat_rows = array_length(M);
+//     const mat_cols = array_length(M[0]);
+//     function checkPos(row,col){
+//         if (row < 0 || col < 0 || row > mat_rows || col > mat_cols){
+//             return false;
+//         } else {
+//             return true;
+//         }
+//     }
+//     // pos is a pair, state denotes going up or down diagonally
+//     function traverseHelper(mat, state, pos){
+//         // row pos
+//         const row_pos = head(pos);
+//         const col_pos = tail(pos);
+//         if (row_pos === array_length(mat) && col_pos === array_length(mat)){
+//           return null;  
+//         } else if (state === "up" && checkPos(row_pos, col_pos)){
+//                 return pair(mat[row_pos][col_pos],
+//                     traverseHelper(mat, state, pair(row_pos+1, col_pos+1)));
+//             } else if (state === "up" && !checkPos(row_pos, col_pos)) {
+//                 return traverseHelper(mat, "down", pos);
+//             } else if (state === "down" && checkPos(row_pos, col_pos)) {
+//                 return pair(mat[row_pos][col_pos],
+//                         traverseHelper(mat, state, pair(row_pos-1, col_pos-1)));
+//         }  else if (state === "down" && !checkPos(row_pos, col_pos)) {
+//                 return traverseHelper(mat, "up", pos);
+//         }
+//     }
+//     return traverseHelper(M, "up", pair(0,0));
+// }
+    
+    const len = array_length(M);
+    const times = len * 2 - 1;
+    
+    function transpose_even(M) {
+        function swap(r1, c1, r2, c2) {
+            let temp = M[r1][c1];
+            M[r1][c1] = M[r2][c2];
+            M[r2][c2] = temp;
+        }
+        for (let i = 0; i < len; i = i + 1) {
+            for (let j = i + 1; j < len; j = j + 1) {
+                if ((i + j) % 2 === 1) {
+                    swap(i, j, j, i);
+                }
+            }
         }
     }
-    // pos is a pair, state denotes going up or down diagonally
-    function traverseHelper(mat, state, pos){
-        // row pos
-        const row_pos = head(pos);
-        const col_pos = tail(pos);
-        if (row_pos === array_length(mat) && col_pos === array_length(mat)){
-          return null;  
-        } else if (state === "up" && checkPos){
-                return pair(mat[row_pos][col_pos],
-                    traverseHelper(mat, state, pair(row_pos+1, col_pos+1)));
-            } else if (state === "up" && !checkPos) {
-                return traverseHelper(mat, "down", pos);
-            } else if (state === "down" && checkPos) {
-                return pair(mat[row_pos][col_pos],
-                        traverseHelper(mat, state, pair(row_pos-1, col_pos-1)));
-        }  else if (state === "down" && !checkPos) {
-                return traverseHelper(mat, "up", pos);
+    
+    let lst = list();
+    
+    transpose_even(M);
+    
+    function travel(i, j) {
+        if (i >= 0 && j < len) {
+            if (M[i] === undefined || M[i][j] === undefined) {
+                travel(i - 1, j + 1);
+            } else {
+                lst = append(lst, list(M[i][j]));
+                travel(i - 1, j + 1);
+            }
         }
     }
-    return traverseHelper(M, "up", M[0][0]);
+    
+    for (let t = 0; t < times; t = t + 1) {
+        travel(t, 0);
+    }
+    
+    return lst;
 }
-
 
 // TASK 4: FASTEST TO WIN
 
 function find_shortest_path(M) {
-    const numRows = array_length(M);
-    const numCols = array_length(M[0]);
-    function shortestHelper(row, col){
-        const current = M[row][col];
-        const right = col > numCols ? shortestHelper(row, col + 1) : 0;
-        const down = row > numRows ? shortestHelper(row + 1, col) : 0;
-        return current + math_min(down, right);
+    // const numRows = array_length(M);
+    // const numCols = array_length(M[0]);
+    // function shortestHelper(row, col){
+    //     const current = M[row][col];
+    //     const right = col > numCols ? shortestHelper(row, col + 1) : 0;
+    //     const down = row > numRows ? shortestHelper(row + 1, col) : 0;
+    //     return current + math_min(down, right);
+    // }
+    // return shortestHelper(0,0);
+    
+    const rows = array_length(M);
+    const cols = array_length(M[0]);
+    for (let i = rows - 1; i >= 0; i = i - 1) {
+        for (let j = cols - 1; j >= 0; j = j - 1) {
+            let down = null;
+            let right = null;
+            if (M[i + 1] !== undefined) {
+                down = M[i + 1][j];
+            } 
+            if (M[i][j + 1] !== undefined) {
+                right = M[i][j + 1];
+            }
+            M[i][j] = is_null(down)
+                      ? (is_null(right)) ? M[i][j] : M[i][j] + right
+                      : (is_null(right)) ? M[i][j] + down : M[i][j] + math_min(down, right);
+        }
     }
-    return shortestHelper(0,0);
+    return M[0][0];
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -667,4 +699,4 @@ function test() {
     test4();
 }
 
-test1();
+test4();
