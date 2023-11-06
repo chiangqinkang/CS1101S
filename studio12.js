@@ -25,12 +25,7 @@ function evaluate(program) {
         C = tail(C);
         
         // expressions and statements
-        
-        // change here for qn 1
-        if (is_function_declaration(command)) {
-            C = pair(function_decl_to_constant_decl(command),
-                     C);
-        } else if (is_literal(command)) {
+        if (is_literal(command)) {
             S = pair(literal_value(command), S);
         } else if (is_binary_operator_combination(command)) {
             C = pair(first_operand(command),
@@ -44,15 +39,11 @@ function evaluate(program) {
                    operator_symbol(command)),
                    C));
         } else if (is_sequence(command)) {
+            // CHANGED HERE
             const body = sequence_statements(command);
-            C = is_null(body)
-                ? pair(make_literal(undefined), C)
-                : is_null(tail(body))
-                ? pair(head(body), C)
-                : pair(head(body),
-                    pair(make_pop_instruction(),
-                      pair(make_sequence(tail(body)),
-                        C)));
+            const reordered = reorder_statements(body);
+            const with_pop = insert_pop_instructions(reordered);
+            C = append(with_pop, C);
         } else if (is_conditional(command)) {
             C = pair(conditional_predicate(command),
                   pair(make_branch_instruction(
@@ -67,8 +58,10 @@ function evaluate(program) {
                   pair(make_env_instruction(E),
                     C));
             E = extend_environment(locals, unassigneds, E);
-        } 
-        else if (is_declaration(command)) {
+        } else if (is_function_declaration(command)) {
+            C = pair(function_decl_to_constant_decl(command),
+                     C);
+        } else if (is_declaration(command)) {
             C = pair(make_assignment(
                        declaration_symbol(command),
                        declaration_value_expression(command)),
@@ -252,6 +245,41 @@ function evaluate(program) {
         }
     }
     return head(S); 
+}
+
+// CHANGED HERE
+
+function reorder_statements(stmts) {
+    // split_statements splits given stmts
+    // into pair(function_declarations,
+    //           all_other_statements)
+    function split_statements(stmts) {
+        if (is_null(stmts)) {
+            return pair(null, null);
+        } else {
+            const first_statement = head(stmts);
+            const split_rest = split_statements(tail(stmts));
+            return is_function_declaration(first_statement)
+                   ? pair(pair(first_statement, head(split_rest)),
+                          tail(split_rest))
+                   : pair(head(split_rest), 
+                          pair(first_statement, tail(split_rest)));
+        }
+    }
+    const split = split_statements(stmts);
+    return append(head(split), tail(split));
+}
+
+// CHANGED HERE: new way of inserting the pop instructions
+function insert_pop_instructions(xs) {
+    return accumulate( (x, ys) => 
+                       is_null(ys) 
+                       ? list(x)
+                       : pair(x, 
+                          pair(make_pop_instruction(),
+                           ys)),
+                       null,
+                       xs);
 }
 
 // scan_out_declarations and list_of_unassigned
@@ -785,7 +813,6 @@ function lookup_symbol_value(symbol, env) {
                    ? head(vals)
                    : scan(tail(symbols), tail(vals));
         }
-        // not what qn 2 is?
         if (env === the_empty_environment) {
             error(symbol, "unbound name");
         } else {
@@ -932,8 +959,100 @@ function display_environment(E) {
     display("", "                                             ");
 }
 
-function parse_and_evaluate(string) {
-    return evaluate(parse(string));
+// CHANGED HERE
+// Follow the structure of the
+// program to catch everything.
+// No need to return any value; 
+// just raise error whenever an
+// undeclared name occurs
+function check_names(component, env) {
+    is_literal(component)
+    ? "ok"
+    : is_name(component)
+    ? lookup_symbol_value(symbol_of_name(component), env)
+    : is_application(component)
+    ? check_names(
+          make_sequence(
+              pair(function_expression(component), 
+                   arg_expressions(component))),
+          env)
+    : is_binary_operator_combination(component)
+    ? check_names(make_sequence(
+                    list(first_operand(component),
+                         second_operand(component))), env)
+    : is_unary_operator_combination(component)
+    ? check_names(first_operand(component), env)
+    : is_conditional(component)
+    ? check_names(
+          make_sequence(
+              list(conditional_predicate(component),
+                   conditional_consequent(component),
+                   conditional_alternative(component))),
+          env)
+    : is_lambda_expression(component)
+    ? check_names(lambda_body(component), 
+                  extend_environment(
+                      lambda_parameter_symbols(component),
+                      list_of_unassigned(
+                         lambda_parameter_symbols(component)),
+                      env))
+    : is_sequence(component)
+    ? map(stmt => check_names(stmt, env),
+          sequence_statements(component))
+    : is_block(component)
+    ? check_names(block_body(component), 
+                  extend_environment(
+                      scan_out_declarations(block_body(component)),
+                      list_of_unassigned(
+                          scan_out_declarations(block_body(component))),
+                      env))
+    : is_function_declaration(component)	    
+    ? check_names(function_decl_to_constant_decl(component), env)
+    : is_return_statement(component)	    
+    ? check_names(return_expression(component), env)    
+    : is_declaration(component)
+    ? check_names(make_sequence(
+                      list(make_name(declaration_symbol(component)), 
+                           declaration_value_expression(component))),
+                  env)
+    : is_while_loop(component)
+    ? check_names(make_sequence(
+                    list(while_loop_predicate(component),
+                         while_loop_body(component))), env)
+    : is_for_loop(component)
+    ? check_names(make_block(
+                    make_sequence(
+                        list(for_loop_init,
+                        for_loop_predicate,
+                        for_loop_update,
+                        for_loop_body
+                        )
+                    )
+                  ), env)
+    : is_array_expression(component)
+    ? check_names(make_sequence(
+                    array_elements(component)), env)
+    : is_array_access(component)
+    ? check_names(make_sequence(
+                    list(
+                    array_access_array_expression(component),
+                    array_access_index_expression(component))),
+                    env)
+    : is_array_assignment(component)
+    ? check_names(make_sequence(
+                    list(
+                        array_assignment_access(component),
+                        array_assignment_value_expression(component)
+                        )), env)
+    : error(component, "Unknown syntax -- check_names");
+}
+
+
+function parse_and_check_names_and_evaluate(input) {
+    const program = parse(input);
+    const implicit_top_level_block = make_block(program);
+    check_names(implicit_top_level_block, the_global_environment);
+    return evaluate(implicit_top_level_block);
 }
 
 //parse_and_evaluate("1;");
@@ -1045,9 +1164,11 @@ a;
 `);
 */
 
-parse_and_evaluate(`
-function f(x) {
-    12;
+parse_and_check_names_and_evaluate(`
+{
+const x = f(8);
+function f(y) { return y + 34;
 }
-f(49);
+x; 
+}
 `);
